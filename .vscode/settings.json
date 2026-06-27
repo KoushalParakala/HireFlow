@@ -1,0 +1,7 @@
+{
+  "python.defaultInterpreterPath": "d:\\Codes\\HireFlow\\backend\\venv\\Scripts\\python.exe",
+  "python.analysis.extraPaths": [
+    "d:\\Codes\\HireFlow\\backend"
+  ],
+  "python.analysis.typeCheckingMode": "basic"
+}

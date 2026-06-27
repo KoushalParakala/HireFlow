@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+venv/
+.env
+
+# Node
+node_modules/
+
+# Expo
+mobile/.expo/
+mobile/dist/
+
+# Build artifacts
+web/dist/
+backend/hireflow.db

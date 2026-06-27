@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HireFlow</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="index.css">
+</head>
+<body>
+    <div class="background-blobs">
+        <div class="blob blob-1"></div>
+        <div class="blob blob-2"></div>
+    </div>
+
+    <header class="glass-header">
+        <div class="logo">
+            <h1>HireFlow <span>AI</span></h1>
+        </div>
+    </header>
+
+    <main class="container">
+        <section id="job-creation-section" class="glass-panel slide-up">
+            <h2>Post a New Job</h2>
+            <p class="subtitle">Let AI parse your requirements and find the best candidates.</p>
+            
+            <form id="job-form">
+                <div class="form-group">
+                    <label for="title">Job Title</label>
+                    <input type="text" id="title" name="title" required placeholder="e.g. Senior Backend Engineer" autocomplete="off">
+                </div>
+                
+                <div class="form-group">
+                    <label for="description">Job Description</label>
+                    <textarea id="description" name="description" rows="6" required placeholder="Paste the full job description here..."></textarea>
+                </div>
+                
+                <button type="submit" class="primary-btn" id="submit-job-btn">
+                    <span class="btn-text">Analyze & Create Job</span>
+                    <div class="spinner hidden"></div>
+                </button>
+            </form>
+        </section>
+
+        <section id="job-dashboard" class="glass-panel hidden slide-up">
+            <div class="dashboard-header">
+                <h2>Job Dashboard</h2>
+                <div class="badge" id="job-id-badge">Job #--</div>
+            </div>
+            
+            <div class="job-details">
+                <h3 id="display-title">Title</h3>
+                <div class="criteria-tags" id="criteria-container">
+                    <!-- Criteria tags will be injected here -->
+                </div>
+            </div>
+
+            <div class="actions">
+                <button id="scrape-btn" class="secondary-btn">
+                    <span class="btn-text">Find Candidates</span>
+                    <div class="spinner hidden"></div>
+                </button>
+                <button id="score-btn" class="secondary-btn hidden">
+                    <span class="btn-text">Score Candidates</span>
+                    <div class="spinner hidden"></div>
+                </button>
+            </div>
+        </section>
+
+        <div id="status-message" class="status-msg hidden"></div>
+
+        <section id="candidates-section" class="hidden">
+            <div class="section-title">
+                <h2>Candidates</h2>
+                <button id="refresh-candidates-btn" class="icon-btn" title="Refresh">↻</button>
+            </div>
+            <div class="candidates-grid" id="candidates-container">
+                <!-- Candidate cards will be injected here -->
+            </div>
+        </section>
+    </main>
+
+    <script src="app.js"></script>
+</body>
+</html>

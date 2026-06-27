@@ -1,0 +1,81 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    background-color: #f9f9fb;
+    color: #1a1c1d;
+    font-family: 'Inter', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    min-height: max(884px, 100dvh);
+  }
+}
+
+@layer components {
+  .material-symbols-outlined {
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    vertical-align: middle;
+  }
+  
+  .hairline-divider {
+    height: 1px;
+    background-color: #e2e2e4;
+    width: 100%;
+  }
+
+  .ambient-card {
+    transition: all 0.3s ease;
+  }
+  
+  .ambient-card:hover {
+    background-color: #f9f9fb;
+  }
+
+  .atmospheric-shadow {
+    box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.04);
+  }
+
+  .hairline-border {
+    border-bottom: 0.5px solid #E5E5E5;
+  }
+
+  .score-gradient {
+    background: linear-gradient(90deg, #0058bc 0%, #0070eb 100%);
+  }
+
+  .matrix-cell {
+    padding: 24px 32px;
+  }
+
+  .pulse-effect {
+    animation: pulse-ring 2s infinite ease-in-out;
+  }
+
+  .atmospheric-blur {
+    backdrop-filter: blur(20px);
+    background: rgba(249, 249, 251, 0.7);
+  }
+
+  .soft-card {
+    background: #ffffff;
+    transition: transform 0.2s ease;
+  }
+  
+  .glass-nav {
+    background: rgba(249, 249, 251, 0.8);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+}
+
+@keyframes pulse-ring {
+  0% { transform: scale(0.95); opacity: 0.8; }
+  50% { transform: scale(1.05); opacity: 0.4; }
+  100% { transform: scale(0.95); opacity: 0.8; }
+}
+
+/* Custom scrollbar for minimalist feel */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #E5E5E5; border-radius: 10px; }
