@@ -9,7 +9,7 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "http://192.168.29.216:8000"
+        "EXPO_PUBLIC_API_URL": "https://hireflow-backend-xhf9.onrender.com"
       }
     },
     "production": {
@@ -17,7 +17,7 @@
         "buildType": "app-bundle"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "http://192.168.29.216:8000"
+        "EXPO_PUBLIC_API_URL": "https://hireflow-backend-xhf9.onrender.com"
       }
     }
   }
