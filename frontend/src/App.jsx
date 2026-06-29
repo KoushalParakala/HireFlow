@@ -8,6 +8,7 @@ const CandidatePipeline = lazy(() => import('./pages/CandidatePipeline'));
 const CandidateProfile = lazy(() => import('./pages/CandidateProfile'));
 const CandidateComparison = lazy(() => import('./pages/CandidateComparison'));
 const InterviewRecording = lazy(() => import('./pages/InterviewRecording'));
+const OpenApp = lazy(() => import('./pages/OpenApp'));
 
 // Simple loading indicator for Suspense fallback
 const PageLoader = () => (
@@ -23,6 +24,7 @@ function App() {
         <Routes>
           {/* Candidate Mobile View (No layout) */}
           <Route path="/interview/:token" element={<InterviewRecording />} />
+          <Route path="/open-app/:token" element={<OpenApp />} />
 
           {/* Recruiter Web Dashboard Views */}
           <Route path="/" element={<Layout><JobOverview /></Layout>} />

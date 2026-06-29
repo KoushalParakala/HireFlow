@@ -70,7 +70,7 @@ def send_invite_email(
 
     Returns True if the email was sent (or logged), False on hard failure.
     """
-    deep_link = f"hireflow://interview/{interview_token}"
+    deep_link = f"{settings.FRONTEND_URL}/open-app/{interview_token}"
     web_link = f"{settings.FRONTEND_URL}/interview/{interview_token}"
     apk_link = f"{settings.FRONTEND_URL}/downloads/hireflow.apk"
     html_body = _HTML_TEMPLATE.format(
