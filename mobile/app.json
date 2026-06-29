@@ -11,7 +11,9 @@
       "package": "com.hireflow.app",
       "permissions": [
         "CAMERA",
-        "RECORD_AUDIO"
+        "RECORD_AUDIO",
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
       ],
       "adaptiveIcon": {
         "backgroundColor": "#6c47ff",
@@ -51,6 +53,11 @@
           "microphonePermission": "Allow HireFlow to access your microphone for interviews."
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "7e394c2e-17f8-4b66-a70f-657b31478cda"
+      }
+    }
   }
 }
