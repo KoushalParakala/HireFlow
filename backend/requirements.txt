@@ -6,8 +6,8 @@ pydantic
 pydantic-settings
 groq
 sentence-transformers==2.7.0
-torch==2.1.2+cpu
 --extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.1.2+cpu
 httpx
 python-dotenv
 python-multipart
