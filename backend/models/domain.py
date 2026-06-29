@@ -58,5 +58,7 @@ class Interview(Base):
     job_id: Mapped[int] = mapped_column(ForeignKey("jobs.id"), nullable=False)
     token: Mapped[str] = mapped_column(unique=True, nullable=False, index=True)
     questions: Mapped[Optional[list[Any]]] = mapped_column(JSON, nullable=True)
+    responses: Mapped[Optional[list[Any]]] = mapped_column(JSON, nullable=True)  # To store dict of {'question_index': 0, 'video_path': '...', 'status': 'completed'}
+    scorecard: Mapped[Optional[dict[str, Any]]] = mapped_column(JSON, nullable=True)
     status: Mapped[str] = mapped_column(default="pending")
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())

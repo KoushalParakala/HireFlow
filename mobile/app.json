@@ -9,6 +9,10 @@
     "scheme": "hireflow",
     "android": {
       "package": "com.hireflow.app",
+      "permissions": [
+        "CAMERA",
+        "RECORD_AUDIO"
+      ],
       "adaptiveIcon": {
         "backgroundColor": "#6c47ff",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -40,7 +44,13 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-asset"
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow HireFlow to access your camera for interviews.",
+          "microphonePermission": "Allow HireFlow to access your microphone for interviews."
+        }
+      ]
     ]
   }
 }

@@ -1,8 +1,16 @@
 """
 Email Service
 -------------
-Sends HTML interview invitation emails via SMTP (Resend / any STARTTLS provider).
-Falls back to logging the deep link if SMTP_USER or SMTP_PASS is not configured.
+Sends HTML interview invitation emails.
+
+Two paths, tried in this order:
+  1. Resend's HTTP API (RESEND_API_KEY set) — a single POST, no SMTP
+     handshake, no port-blocking concerns on Railway. This is the
+     recommended path.
+  2. SMTP (SMTP_USER / SMTP_PASS set) — works with Resend's SMTP relay too
+     (smtp.resend.com, user "resend", pass = your Resend API key) or any
+     other STARTTLS provider.
+Falls back to logging the deep link if neither is configured.
 """
 from __future__ import annotations
 
@@ -10,6 +18,8 @@ import logging
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+
+import httpx
 
 from core.config import settings
 
@@ -72,28 +82,55 @@ def send_invite_email(
     """
     deep_link = f"hireflow://interview/{interview_token}"
     web_link = f"{settings.FRONTEND_URL}/interview/{interview_token}"
+    html_body = _HTML_TEMPLATE.format(
+        candidate_name=candidate_name,
+        job_title=job_title,
+        deep_link=deep_link,
+        web_link=web_link,
+    )
+    subject = f"HireFlow Interview Invitation: {job_title}"
 
-    # --- Fallback: log if SMTP not configured ---
-    if not settings.SMTP_USER or not settings.SMTP_PASS:
+    # --- Path 1: Resend HTTP API (preferred — no SMTP port issues) ---
+    if settings.RESEND_API_KEY:
+        try:
+            resp = httpx.post(
+                "https://api.resend.com/emails",
+                headers={"Authorization": f"Bearer {settings.RESEND_API_KEY}"},
+                json={
+                    "from": settings.SMTP_FROM_EMAIL,
+                    "to": [to_email],
+                    "subject": subject,
+                    "html": html_body,
+                },
+                timeout=10,
+            )
+            if resp.status_code in (200, 201):
+                logger.info(f"Interview invitation sent via Resend API to {to_email} for '{job_title}'")
+                return True
+            logger.error(f"Resend API send failed ({resp.status_code}): {resp.text}")
+            # fall through to SMTP / mock below if SMTP is also configured
+        except Exception as exc:
+            logger.error(f"Resend API request failed: {exc}")
+            # fall through
+
+    # --- Fallback: log if neither Resend API nor SMTP is configured ---
+    if not settings.RESEND_API_KEY and (not settings.SMTP_USER or not settings.SMTP_PASS):
         logger.info(
             f"[EMAIL MOCK] To: {to_email} | Candidate: {candidate_name} | "
             f"Job: {job_title} | Web link: {web_link} | Deep link: {deep_link}"
         )
         return True
 
-    # --- Real SMTP send via Resend (or any provider) ---
+    if not settings.SMTP_USER or not settings.SMTP_PASS:
+        # Resend API was configured but failed, and there's no SMTP fallback.
+        return False
+
+    # --- Path 2: SMTP (Resend's SMTP relay or any STARTTLS provider) ---
     try:
         msg = MIMEMultipart("alternative")
-        msg["Subject"] = f"HireFlow Interview Invitation: {job_title}"
+        msg["Subject"] = subject
         msg["From"] = settings.SMTP_FROM_EMAIL
         msg["To"] = to_email
-
-        html_body = _HTML_TEMPLATE.format(
-            candidate_name=candidate_name,
-            job_title=job_title,
-            deep_link=deep_link,
-            web_link=web_link,
-        )
         msg.attach(MIMEText(html_body, "html"))
 
         with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT) as server:
@@ -102,7 +139,7 @@ def send_invite_email(
             server.login(settings.SMTP_USER, settings.SMTP_PASS)
             server.sendmail(settings.SMTP_FROM_EMAIL, to_email, msg.as_string())
 
-        logger.info(f"Interview invitation sent to {to_email} for '{job_title}'")
+        logger.info(f"Interview invitation sent via SMTP to {to_email} for '{job_title}'")
         return True
 
     except Exception as exc:

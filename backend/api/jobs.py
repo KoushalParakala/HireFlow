@@ -7,10 +7,10 @@ from pydantic import BaseModel
 import asyncio
 
 from models.database import get_db
-from models.domain import Job, Candidate
+from models.domain import Job, Candidate, Interview
 from services.jd_analyzer import analyze_job_description
 from services.scraper import scrape_candidates
-from services.scorer import score_candidate
+from services.scorer import score_candidates_batch
 
 router = APIRouter()
 
@@ -35,17 +35,8 @@ def create_job(req: JobCreateRequest, db: Session = Depends(get_db)):
     return {"message": "Job created and analyzed", "job_id": job.id, "criteria": criteria}
 
 
-@router.get("/{job_id}", summary="Get a job posting")
-def get_job(job_id: int, db: Session = Depends(get_db)):
-    job = db.query(Job).filter(Job.id == job_id).first()
-    if job is None:
-        raise HTTPException(status_code=404, detail="Job not found")
-    
-    # Return job along with candidate count
-    candidate_count = db.query(Candidate).filter(Candidate.job_id == job_id).count()
-    return {"id": job.id, "title": job.title, "description": job.description, "candidate_count": candidate_count}
-
-
+# IMPORTANT: GET "/" must come BEFORE GET "/{job_id}" to avoid FastAPI matching
+# the literal string "" as a job_id parameter.
 @router.get("/", summary="Get all jobs")
 def get_all_jobs(db: Session = Depends(get_db)):
     results = (
@@ -55,14 +46,34 @@ def get_all_jobs(db: Session = Depends(get_db)):
         .order_by(Job.id.desc())
         .all()
     )
-    return [
-        {
+    jobs_out = []
+    for job, count in results:
+        interviews_total = db.query(Interview).filter(Interview.job_id == job.id).count()
+        interviews_completed = db.query(Interview).filter(Interview.job_id == job.id, Interview.status == 'scored').count()
+        completion_rate = (interviews_completed / interviews_total * 100) if interviews_total > 0 else 0
+
+        avg_score_val = db.query(func.avg(Candidate.semantic_score)).filter(Candidate.job_id == job.id, Candidate.semantic_score != None).scalar()
+        avg_semantic_score = round(avg_score_val) if avg_score_val else None
+
+        jobs_out.append({
             "id": job.id,
             "title": job.title,
-            "candidate_count": count
-        }
-        for job, count in results
-    ]
+            "candidate_count": count,
+            "interview_completion_rate": round(completion_rate),
+            "average_semantic_score": avg_semantic_score
+        })
+    return jobs_out
+
+
+@router.get("/{job_id}", summary="Get a job posting")
+def get_job(job_id: int, db: Session = Depends(get_db)):
+    job = db.query(Job).filter(Job.id == job_id).first()
+    if job is None:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    candidate_count = db.query(Candidate).filter(Candidate.job_id == job_id).count()
+    return {"id": job.id, "title": job.title, "description": job.description, "candidate_count": candidate_count}
+
 
 @router.post("/{job_id}/scrape", summary="Scrape LinkedIn + GitHub for candidates")
 async def scrape_for_job(job_id: int, db: Session = Depends(get_db)):
@@ -75,8 +86,7 @@ async def scrape_for_job(job_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Job not found")
 
     raw = await scrape_candidates(job.title, criteria=job.criteria or {})
-    
-    # Check DB for existing URLs to prevent duplicate insertions
+
     existing_urls = {
         u[0] for u in db.query(Candidate.profile_url)
         .filter(Candidate.job_id == job_id, Candidate.profile_url.isnot(None))
@@ -88,7 +98,7 @@ async def scrape_for_job(job_id: int, db: Session = Depends(get_db)):
         profile_url = c.get("profile_url")
         if profile_url and profile_url in existing_urls:
             continue
-            
+
         db.add(Candidate(
             job_id=job_id,
             name=c.get("name"),
@@ -118,11 +128,8 @@ async def score_all_candidates(job_id: int, db: Session = Depends(get_db)):
     """
     1. Scores every 'scraped' candidate using sentence-transformers + Groq.
        Produces a per-criterion breakdown: technical_skills / seniority / domain_experience.
-    2. Adaptively shortlists to guarantee >=10 candidates per role:
-       - Starts at threshold=70, steps down by 5 until >=10 qualify (floor=40).
-       - Candidates above threshold -> 'shortlisted'; rest stay 'scored'.
-    3. Returns breakdown per candidate so the recruiter can see
-       individual dimension scores, not just a total.
+    2. Adaptively shortlists to guarantee >=10 candidates per role.
+    3. Returns breakdown per candidate.
     """
     job = db.query(Job).filter(Job.id == job_id).first()
     if job is None:
@@ -136,35 +143,39 @@ async def score_all_candidates(job_id: int, db: Session = Depends(get_db)):
     if not unscored:
         return {"message": "No unscored candidates found"}
 
-    # --- Step 1: Score all candidates ---
     scored_records: list[dict] = []
     loop = asyncio.get_running_loop()
-    
-    for c in unscored:
-        candidate_data = {
+
+    candidate_payloads = [
+        {
             "name": c.name or "",
             "title": c.current_title or "",
             "company": c.current_company or "",
             "skills": c.skills or [],
             "experience": c.experience_summary or "",
         }
-        
-        result = await loop.run_in_executor(
-            None, 
-            score_candidate, 
-            candidate_data, 
-            job.criteria or {}
-        )
-        
+        for c in unscored
+    ]
+
+    # One batched call: embeds the JD once, embeds all candidates in a single
+    # encode() pass, and fans the Groq qualitative calls out concurrently —
+    # instead of looping score_candidate() once per candidate sequentially.
+    results = await loop.run_in_executor(
+        None,
+        score_candidates_batch,
+        candidate_payloads,
+        job.criteria or {},
+    )
+
+    for c, result in zip(unscored, results):
         c.semantic_score = result.get("overall_score", 0)
         c.score_breakdown = result.get("breakdown", {})
         c.red_flags = result.get("red_flags", [])
         c.status = "scored"
         scored_records.append({"candidate": c, "result": result})
 
-    # --- Step 2: Adaptive shortlisting (min 10 per role) ---
     MIN_SHORTLIST = 10
-    THRESHOLD_START = 55   # cosine sim * 100 realistic range for MiniLM is 35–70
+    THRESHOLD_START = 55
     THRESHOLD_FLOOR = 30
     THRESHOLD_STEP = 5
 
@@ -181,7 +192,6 @@ async def score_all_candidates(job_id: int, db: Session = Depends(get_db)):
             threshold_used = threshold
             break
     else:
-        # Floor reached — shortlist whoever is above floor, even if < 10
         threshold_used = THRESHOLD_FLOOR
         shortlisted_ids = [
             rec["candidate"].id
@@ -197,7 +207,6 @@ async def score_all_candidates(job_id: int, db: Session = Depends(get_db)):
 
     db.commit()
 
-    # --- Step 3: Build response with full breakdown ---
     candidate_summaries = [
         {
             "id": rec["candidate"].id,

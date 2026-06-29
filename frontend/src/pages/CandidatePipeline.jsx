@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 
 export default function CandidatePipeline() {
   const { jobId } = useParams();
@@ -10,6 +10,11 @@ export default function CandidatePipeline() {
   const [isLoading, setIsLoading] = useState(true);
   const [actionError, setActionError] = useState('');
   const [actionSuccess, setActionSuccess] = useState('');
+  const [selectedCandidates, setSelectedCandidates] = useState([]);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [addForm, setAddForm] = useState({ name: '', email: '', current_title: '', current_company: '' });
+  const [isAdding, setIsAdding] = useState(false);
+  const navigate = useNavigate();
 
   const fetchCandidates = () => {
     setIsLoading(true);
@@ -88,6 +93,77 @@ export default function CandidatePipeline() {
     }
   };
 
+  const toggleCandidateSelection = (e, id) => {
+    e.preventDefault();
+    setSelectedCandidates(prev => 
+      prev.includes(id) ? prev.filter(cId => cId !== id) : [...prev, id]
+    );
+  };
+
+  const handleCompare = () => {
+    if (selectedCandidates.length >= 2) {
+      navigate(`/jobs/${jobId}/compare?candidates=${selectedCandidates.join(',')}`);
+    }
+  };
+
+  const handleInvite = async (e, id) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setActionError('');
+    setActionSuccess('');
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'}/api/candidates/${id}/invite`, { 
+        method: 'POST',
+        headers: { 'Authorization': 'Basic YWRtaW46aGlyZWZsb3cxMjM=' }
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        setActionError(err.detail || `Error ${res.status}: Could not send invite.`);
+      } else {
+        setActionSuccess(`Invite sent to candidate HF-${id}`);
+        fetchCandidates();
+      }
+    } catch (err) {
+      setActionError('Network error. Please try again.');
+      console.error(err);
+    }
+  };
+
+  const handleManualAdd = async (e) => {
+    e.preventDefault();
+    if (!addForm.name.trim() || !addForm.email.trim()) {
+      setActionError('Name and email are required.');
+      return;
+    }
+    setIsAdding(true);
+    setActionError('');
+    setActionSuccess('');
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'}/api/candidates/manual`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Basic YWRtaW46aGlyZWZsb3cxMjM='
+        },
+        body: JSON.stringify({ job_id: Number(jobId), ...addForm })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setActionError(data.detail || `Could not add candidate (${res.status})`);
+      } else {
+        setActionSuccess(`${addForm.name} added and shortlisted.`);
+        setShowAddModal(false);
+        setAddForm({ name: '', email: '', current_title: '', current_company: '' });
+        fetchCandidates();
+      }
+    } catch (err) {
+      setActionError('Network error while adding candidate.');
+      console.error(err);
+    } finally {
+      setIsAdding(false);
+    }
+  };
+
   // Render dummy avatars for visual polish
   const getAvatar = (id) => `https://i.pravatar.cc/150?u=${id}`;
 
@@ -105,6 +181,13 @@ export default function CandidatePipeline() {
           </p>
         </div>
         <div className="flex gap-4">
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="flex items-center gap-2 px-6 py-3 rounded-full border border-outline-variant text-on-surface font-medium transition-all hover:bg-surface-container-low active:scale-95"
+          >
+            <span className="material-symbols-outlined text-sm">person_add</span>
+            <span className="text-label-md font-label-md">Add Candidate</span>
+          </button>
           <button 
             onClick={handleScrape}
             disabled={isScraping}
@@ -144,7 +227,8 @@ export default function CandidatePipeline() {
         {/* Table Header (Subtle) */}
         <div className="grid grid-cols-12 px-8 py-4 text-on-surface-variant/60 font-label-caps text-label-caps">
           <div className="col-span-1">RANK</div>
-          <div className="col-span-5">CANDIDATE</div>
+          <div className="col-span-1 text-center">COMPARE</div>
+          <div className="col-span-4">CANDIDATE</div>
           <div className="col-span-3">STATUS</div>
           <div className="col-span-2 text-right">AI MATCH</div>
           <div className="col-span-1 text-right"></div>
@@ -160,7 +244,17 @@ export default function CandidatePipeline() {
                 </span>
               </div>
               
-              <div className="col-span-5 flex items-center gap-6">
+              <div className="col-span-1 flex justify-center">
+                <input 
+                  type="checkbox" 
+                  className="w-5 h-5 rounded border-outline-variant text-primary focus:ring-primary cursor-pointer"
+                  checked={selectedCandidates.includes(candidate.id)}
+                  onChange={(e) => toggleCandidateSelection(e, candidate.id)}
+                  onClick={(e) => e.stopPropagation()}
+                />
+              </div>
+
+              <div className="col-span-4 flex items-center gap-6">
                 <div className="w-16 h-16 rounded-full overflow-hidden bg-surface-container shrink-0">
                   <img className="w-full h-full object-cover" src={getAvatar(candidate.id)} alt={candidate.name} />
                 </div>
@@ -172,26 +266,39 @@ export default function CandidatePipeline() {
                 </div>
               </div>
 
-              <div className="col-span-3">
+              <div className="col-span-3 flex flex-col items-start gap-2">
                 <span className={`inline-flex items-center gap-2 px-4 py-1 rounded-full text-label-md font-medium ${
                   candidate.status === 'shortlisted' 
                     ? 'bg-primary-fixed text-on-primary-fixed-variant'
                     : candidate.status === 'invited'
                     ? 'bg-secondary-container text-on-secondary-container'
+                    : candidate.status === 'processing' || candidate.status === 'interviewed'
+                    ? 'bg-tertiary-container text-on-tertiary-container'
                     : 'bg-surface-container-high text-on-surface-variant'
                 }`}>
                   <span className={`w-1.5 h-1.5 rounded-full ${
                     candidate.status === 'shortlisted' ? 'bg-primary' 
                     : candidate.status === 'invited' ? 'bg-secondary'
+                    : candidate.status === 'processing' || candidate.status === 'interviewed' ? 'bg-tertiary'
                     : 'bg-surface-dim'
                   }`}></span>
                   {candidate.status === 'shortlisted' ? 'Shortlisted'
                     : candidate.status === 'invited' ? 'Invited'
+                    : candidate.status === 'processing' ? 'Processing'
+                    : candidate.status === 'interviewed' ? 'Interviewed'
                     : candidate.status === 'scored' ? 'Scored'
                     : 'Scraped'}
                 </span>
+                {candidate.status === 'shortlisted' && (
+                  <button 
+                    onClick={(e) => handleInvite(e, candidate.id)}
+                    className="text-[12px] font-label-md text-primary bg-primary/10 hover:bg-primary/20 px-3 py-1 rounded-full transition-colors flex items-center gap-1"
+                  >
+                    <span className="material-symbols-outlined text-[14px]">send</span> Invite
+                  </button>
+                )}
                 {candidate.source && (
-                  <span className="ml-2 text-[10px] text-on-surface-variant/60 uppercase tracking-widest">{candidate.source}</span>
+                  <span className="text-[10px] text-on-surface-variant/60 uppercase tracking-widest">{candidate.source}</span>
                 )}
               </div>
 
@@ -257,6 +364,79 @@ export default function CandidatePipeline() {
             </button>
           </div>
         </footer>
+      )}
+      {/* Floating Compare Action Bar */}
+      {selectedCandidates.length > 0 && (
+        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 bg-surface shadow-2xl rounded-full px-6 py-4 flex items-center gap-6 border border-primary/20 z-50 atmospheric-shadow animate-fade-in">
+          <div className="text-on-surface font-medium">
+            <span className="text-primary font-bold">{selectedCandidates.length}</span> selected
+          </div>
+          <button 
+            onClick={handleCompare}
+            disabled={selectedCandidates.length < 2 || selectedCandidates.length > 4}
+            className="px-6 py-2 rounded-full bg-primary text-on-primary font-medium hover:opacity-90 active:scale-95 disabled:opacity-50 disabled:bg-surface-container-high disabled:text-on-surface-variant transition-all flex items-center gap-2"
+          >
+            <span className="material-symbols-outlined text-sm">compare_arrows</span>
+            Compare (Min 2, Max 4)
+          </button>
+        </div>
+      )}
+
+      {/* Add Candidate Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[60] p-6" onClick={() => setShowAddModal(false)}>
+          <div
+            className="bg-surface-container-lowest rounded-xl p-8 w-full max-w-md atmospheric-shadow"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="font-headline-md text-headline-md mb-2">Add Candidate</h3>
+            <p className="text-on-surface-variant text-sm mb-6">
+              For referrals or direct applicants who didn't come from a scrape. They're added straight to the shortlist — no email needed.
+            </p>
+            <form onSubmit={handleManualAdd} className="space-y-4">
+              <input
+                type="text" required placeholder="Full name"
+                className="w-full px-4 py-3 rounded-lg border border-outline-variant bg-surface focus:outline-none focus:border-primary"
+                value={addForm.name}
+                onChange={(e) => setAddForm({ ...addForm, name: e.target.value })}
+              />
+              <input
+                type="email" required placeholder="Email address"
+                className="w-full px-4 py-3 rounded-lg border border-outline-variant bg-surface focus:outline-none focus:border-primary"
+                value={addForm.email}
+                onChange={(e) => setAddForm({ ...addForm, email: e.target.value })}
+              />
+              <input
+                type="text" placeholder="Current title (optional)"
+                className="w-full px-4 py-3 rounded-lg border border-outline-variant bg-surface focus:outline-none focus:border-primary"
+                value={addForm.current_title}
+                onChange={(e) => setAddForm({ ...addForm, current_title: e.target.value })}
+              />
+              <input
+                type="text" placeholder="Current company (optional)"
+                className="w-full px-4 py-3 rounded-lg border border-outline-variant bg-surface focus:outline-none focus:border-primary"
+                value={addForm.current_company}
+                onChange={(e) => setAddForm({ ...addForm, current_company: e.target.value })}
+              />
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAddModal(false)}
+                  className="flex-1 px-6 py-3 rounded-full border border-outline-variant font-medium hover:bg-surface-container-low transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isAdding}
+                  className="flex-1 px-6 py-3 rounded-full bg-primary text-on-primary font-medium hover:opacity-90 disabled:opacity-50 transition-all"
+                >
+                  {isAdding ? 'Adding...' : 'Add & Shortlist'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
     </div>
   );

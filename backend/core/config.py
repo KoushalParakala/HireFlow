@@ -23,8 +23,14 @@ class Settings(BaseSettings):
     # Apify API token for LinkedIn scraping
     APIFY_TOKEN: str | None = None
 
-    # SMTP for sending interview invite emails — add to .env
-    SMTP_HOST: str = "smtp.gmail.com"
+    # Resend HTTP API key — preferred email path, get one free at https://resend.com
+    # If set, this is used instead of SMTP (more reliable on Railway).
+    RESEND_API_KEY: str | None = None
+
+    # SMTP fallback for sending interview invite emails — add to .env
+    # If using Resend over SMTP instead of their HTTP API: host=smtp.resend.com,
+    # port=587, user="resend", pass=<your Resend API key>.
+    SMTP_HOST: str = "smtp.resend.com"
     SMTP_PORT: int = 587
     SMTP_USER: str | None = None
     SMTP_PASS: str | None = None

@@ -156,6 +156,59 @@ export default function CandidateProfile() {
         </div>
       </div>
 
+      {/* Interview Scorecard Section */}
+      {candidate.interview?.scorecard && (
+        <div className="mb-24 bg-white p-10 rounded-xl atmospheric-shadow hairline-border">
+          <div className="flex justify-between items-center mb-10">
+            <h3 className="font-label-caps text-label-caps text-on-surface-variant">INTERVIEW SCORECARD</h3>
+            <div className="flex items-center gap-2">
+              <span className="font-body-md text-on-surface-variant">Overall Score</span>
+              <span className="font-headline-md text-primary">{Math.round(candidate.interview.scorecard.overall_average * 10)}%</span>
+            </div>
+          </div>
+          
+          <div className="space-y-8">
+            {candidate.interview.scorecard.questions.map((q, idx) => (
+              <div key={idx} className="border-b border-outline-variant/30 pb-8 last:border-0 last:pb-0">
+                <p className="font-semibold text-[18px] mb-4">Q{idx + 1}: <span className="font-normal text-on-surface-variant">Answer Analysis</span></p>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                  <div className="bg-surface-container-lowest p-4 rounded-lg border border-outline-variant/30">
+                    <p className="text-[12px] text-on-surface-variant mb-1 font-label-caps uppercase tracking-wider">Clarity</p>
+                    <p className="font-bold text-primary text-[24px]">{q.dimensions?.clarity || 0}/10</p>
+                  </div>
+                  <div className="bg-surface-container-lowest p-4 rounded-lg border border-outline-variant/30">
+                    <p className="text-[12px] text-on-surface-variant mb-1 font-label-caps uppercase tracking-wider">Relevance</p>
+                    <p className="font-bold text-primary text-[24px]">{q.dimensions?.relevance || 0}/10</p>
+                  </div>
+                  <div className="bg-surface-container-lowest p-4 rounded-lg border border-outline-variant/30">
+                    <p className="text-[12px] text-on-surface-variant mb-1 font-label-caps uppercase tracking-wider">Specificity</p>
+                    <p className="font-bold text-primary text-[24px]">{q.dimensions?.specificity || 0}/10</p>
+                  </div>
+                  <div className="bg-surface-container-lowest p-4 rounded-lg border border-outline-variant/30">
+                    <p className="text-[12px] text-on-surface-variant mb-1 font-label-caps uppercase tracking-wider">Depth</p>
+                    <p className="font-bold text-primary text-[24px]">{q.dimensions?.depth || 0}/10</p>
+                  </div>
+                </div>
+                <p className="text-on-surface-variant mb-6 text-[15px] leading-relaxed">{q.summary}</p>
+                {q.follow_up_questions && q.follow_up_questions.length > 0 && (
+                  <div className="bg-primary/5 p-5 rounded-xl border border-primary/10">
+                    <p className="font-semibold text-[14px] mb-3 text-primary flex items-center gap-2">
+                      <span className="material-symbols-outlined text-[18px]">psychology_alt</span> 
+                      Recommended Follow-ups:
+                    </p>
+                    <ul className="list-disc pl-5 text-[14px] space-y-2 text-on-surface-variant">
+                      {q.follow_up_questions.map((fq, i) => (
+                        <li key={i}>{fq}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* CTA / Footer Actions */}
       <footer className="mt-24 pt-12 border-t border-outline-variant/30 flex flex-col gap-4">
         <div className="flex justify-between items-center">

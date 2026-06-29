@@ -6,6 +6,7 @@ import Layout from './components/Layout';
 const JobOverview = lazy(() => import('./pages/JobOverview'));
 const CandidatePipeline = lazy(() => import('./pages/CandidatePipeline'));
 const CandidateProfile = lazy(() => import('./pages/CandidateProfile'));
+const CandidateComparison = lazy(() => import('./pages/CandidateComparison'));
 const InterviewRecording = lazy(() => import('./pages/InterviewRecording'));
 
 // Simple loading indicator for Suspense fallback
@@ -26,6 +27,7 @@ function App() {
           {/* Recruiter Web Dashboard Views */}
           <Route path="/" element={<Layout><JobOverview /></Layout>} />
           <Route path="/jobs/:jobId" element={<Layout><CandidatePipeline /></Layout>} />
+          <Route path="/jobs/:jobId/compare" element={<Layout><CandidateComparison /></Layout>} />
           <Route path="/candidates/:id" element={<Layout><CandidateProfile /></Layout>} />
         </Routes>
       </Suspense>

@@ -8,13 +8,20 @@ from typing import Generator
 from core.config import settings
 
 
-engine = create_engine(
-    settings.DATABASE_URL,
-    pool_size=5,
-    max_overflow=10,
-    pool_pre_ping=True,
-    pool_recycle=300,
-)
+engine_kwargs = {}
+if settings.DATABASE_URL.startswith("postgres"):
+    engine_kwargs = {
+        "pool_size": 5,
+        "max_overflow": 10,
+        "pool_pre_ping": True,
+        "pool_recycle": 300,
+    }
+else:
+    engine_kwargs = {
+        "connect_args": {"check_same_thread": False}
+    }
+
+engine = create_engine(settings.DATABASE_URL, **engine_kwargs)
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 

@@ -2,8 +2,8 @@
 Candidate Sourcing Service
 --------------------------
 Async pipeline with two sources:
-1. Apify LinkedIn Search Actor (PRIMARY — 2 pages, up to 20 profiles)
-2. GitHub REST API (SECONDARY — 2 pages, up to 20 profiles)
+1. Apify LinkedIn Profile Scraper — runs actor, polls for results
+2. GitHub REST API — 2 pages, up to 20 profiles
 
 Results are unified, deduplicated, and returned as a flat list.
 Rate limiting: exponential backoff on 429/503 for both sources.
@@ -11,7 +11,6 @@ Rate limiting: exponential backoff on 429/503 for both sources.
 import asyncio
 import logging
 import urllib.parse
-import difflib
 from typing import Any
 
 import httpx
@@ -19,6 +18,10 @@ import httpx
 from core.config import settings
 
 logger = logging.getLogger(__name__)
+
+APIFY_BASE = "https://api.apify.com/v2"
+# Working LinkedIn Profile Scraper actor on Apify
+LINKEDIN_ACTOR_ID = "M2FMdjRVeF1HPGFcc"
 
 
 async def _exponential_backoff(attempt: int) -> None:
@@ -28,119 +31,174 @@ async def _exponential_backoff(attempt: int) -> None:
 
 
 # ---------------------------------------------------------------------------
-# LinkedIn (PRIMARY) — Apify actor, paginated across 2 pages
+# LinkedIn (PRIMARY) — Apify actor run → poll → fetch dataset
 # ---------------------------------------------------------------------------
 
-async def _fetch_linkedin_page(
+def _parse_linkedin_item(item: dict, job_title: str) -> dict[str, Any]:
+    """Normalise a single Apify LinkedIn profile item into HireFlow schema."""
+    raw_loc = item.get("location")
+    loc_str = raw_loc.get("linkedinText") if isinstance(raw_loc, dict) else raw_loc
+
+    first_name = item.get("firstName", "")
+    last_name = item.get("lastName", "")
+    full_name = f"{first_name} {last_name}".strip()
+
+    current_positions = item.get("currentPositions") or []
+    curr_pos = current_positions[0] if current_positions else {}
+
+    # Skills: Apify sometimes returns a list of dicts with "name" key
+    raw_skills = item.get("skills") or []
+    skills = []
+    for s in raw_skills:
+        if isinstance(s, dict):
+            skills.append(s.get("name", ""))
+        elif isinstance(s, str):
+            skills.append(s)
+
+    return {
+        "name": full_name or item.get("name") or item.get("title") or "Unknown",
+        "current_title": (
+            curr_pos.get("title")
+            or item.get("jobTitle")
+            or item.get("headline")
+            or job_title
+        ),
+        "current_company": (
+            curr_pos.get("companyName")
+            or item.get("company")
+            or "Unknown"
+        ),
+        "experience_summary": item.get("summary") or item.get("about") or "",
+        "skills": [s for s in skills if s],
+        "profile_url": (
+            item.get("linkedinUrl")
+            or item.get("url")
+            or item.get("profileUrl")
+        ),
+        "source": "LinkedIn",
+        "location": loc_str or None,
+        "github_username": None,
+        "public_repos": None,
+        "followers": None,
+        "email": item.get("email") or None,
+    }
+
+
+async def _run_apify_actor(
     client: httpx.AsyncClient,
     job_title: str,
-    page: int,
+    max_items: int = 15,
 ) -> list[dict[str, Any]]:
-    """Fetch one page of LinkedIn candidates via the Apify actor."""
+    """
+    Start an Apify actor run synchronously and return parsed profiles.
+    Uses run-sync-get-dataset-items (blocks until the run finishes, max 300s).
+    Falls back gracefully on any error.
+    """
     if not settings.APIFY_TOKEN:
+        logger.warning("No APIFY_TOKEN — skipping LinkedIn scrape.")
         return []
 
-    actor_id = "M2FMdjRVeF1HPGFcc"
+    token = settings.APIFY_TOKEN
     url = (
-        f"https://api.apify.com/v2/acts/{actor_id}"
-        f"/run-sync-get-dataset-items?token={settings.APIFY_TOKEN}&timeout=120"
+        f"{APIFY_BASE}/acts/{LINKEDIN_ACTOR_ID}"
+        f"/run-sync-get-dataset-items"
+        f"?token={token}&timeout=180&memory=256"
     )
+
+    # Input schema for M2FMdjRVeF1HPGFcc (LinkedIn Profile Search Scraper No Cookies)
     payload = {
         "searchQuery": job_title,
-        "maxItems": 10,
+        "maxItems": max_items,
         "profileScraperMode": "Short",
-        "startPage": page,
         "autoQuerySegmentation": False,
         "recentlyChangedJobs": False,
         "recentlyPostedOnLinkedIn": False,
     }
 
-    for attempt in range(2):
+    for attempt in range(3):
         try:
-            logger.info(f"Apify LinkedIn — page {page} for '{job_title}'")
+            logger.info(f"Apify LinkedIn — starting actor run for '{job_title}' (attempt {attempt+1})")
             resp = await client.post(url, json=payload)
+
             if resp.status_code in (200, 201):
                 items = resp.json()
-                results = []
-                for item in items:
-                    raw_loc = item.get("location")
-                    loc_str = raw_loc.get("linkedinText") if isinstance(raw_loc, dict) else raw_loc
+                if not isinstance(items, list):
+                    logger.error(f"Apify returned non-list: {type(items)}")
+                    return []
+                logger.info(f"Apify returned {len(items)} LinkedIn profiles")
+                return [_parse_linkedin_item(i, job_title) for i in items]
 
-                    first_name = item.get("firstName", "")
-                    last_name = item.get("lastName", "")
-                    full_name = f"{first_name} {last_name}".strip()
+            elif resp.status_code == 400:
+                # Actor input schema may differ — try alternative input format
+                logger.warning(f"Apify 400 — trying alternative input format")
+                alt_payload = {
+                    "queries": job_title,
+                    "maxResults": max_items,
+                }
+                resp2 = await client.post(url, json=alt_payload)
+                if resp2.status_code in (200, 201):
+                    items = resp2.json()
+                    if isinstance(items, list):
+                        logger.info(f"Apify alt format returned {len(items)} profiles")
+                        return [_parse_linkedin_item(i, job_title) for i in items]
 
-                    current_positions = item.get("currentPositions", [])
-                    curr_pos_title = current_positions[0].get("title") if current_positions else None
-                    curr_pos_company = current_positions[0].get("companyName") if current_positions else None
-
-                    results.append({
-                        "name": full_name or item.get("name") or item.get("title") or "Unknown",
-                        "current_title": curr_pos_title or item.get("jobTitle") or item.get("headline") or job_title,
-                        "current_company": curr_pos_company or item.get("company") or "Unknown",
-                        "experience_summary": item.get("summary") or item.get("about") or "",
-                        "skills": [],
-                        "profile_url": item.get("linkedinUrl") or item.get("url") or item.get("profileUrl"),
-                        "source": "LinkedIn",
-                        "location": loc_str or None,
-                        "github_username": None,
-                        "public_repos": None,
-                        "followers": None,
-                        "email": item.get("email") or None,
-                    })
-                logger.info(f"Apify page {page} returned {len(results)} profiles")
-                return results
             elif resp.status_code in (429, 503):
                 await _exponential_backoff(attempt)
+                continue
+
             else:
-                logger.error(f"Apify page {page} failed: {resp.status_code} — {resp.text[:300]}")
+                logger.error(
+                    f"Apify failed: HTTP {resp.status_code} — {resp.text[:400]}"
+                )
                 return []
+
+        except httpx.TimeoutException:
+            logger.warning(f"Apify timeout on attempt {attempt+1}")
+            await _exponential_backoff(attempt)
         except httpx.RequestError as e:
-            logger.error(f"Apify page {page} request error: {e}")
+            logger.error(f"Apify request error: {e}")
             await _exponential_backoff(attempt)
 
+    logger.error("Apify: all attempts exhausted")
     return []
 
 
 async def _fetch_linkedin_candidates(job_title: str) -> list[dict[str, Any]]:
-    """Fetch 2 pages of LinkedIn candidates concurrently (up to 20 profiles)."""
-    if not settings.APIFY_TOKEN:
-        logger.warning("No APIFY_TOKEN set, skipping LinkedIn scrape.")
-        return []
-
-    async with httpx.AsyncClient(timeout=120.0) as client:
-        page1_task = _fetch_linkedin_page(client, job_title, page=1)
-        page2_task = _fetch_linkedin_page(client, job_title, page=2)
-        pages = await asyncio.gather(page1_task, page2_task, return_exceptions=True)
-
-    combined: list[dict[str, Any]] = []
-    for page in pages:
-        if isinstance(page, list):
-            combined.extend(page)
-        else:
-            logger.error(f"LinkedIn page task error: {page}")
-
-    logger.info(f"LinkedIn total: {len(combined)} profiles across 2 pages")
-    return combined
+    """Run the Apify LinkedIn scraper and return up to 20 profiles."""
+    async with httpx.AsyncClient(timeout=200.0) as client:
+        return await _run_apify_actor(client, job_title, max_items=20)
 
 
 # ---------------------------------------------------------------------------
-# GitHub (SECONDARY) — REST API, paginated across 2 pages
+# GitHub (SECONDARY) — REST API, 2 pages
 # ---------------------------------------------------------------------------
 
-async def _fetch_github_profile(client: httpx.AsyncClient, username: str) -> dict[str, Any] | None:
-    headers = {
-        "Accept": "application/vnd.github.v3+json",
-        "User-Agent": "HireFlow-Backend",
-    }
-    if settings.GITHUB_TOKEN:
-        headers["Authorization"] = f"Bearer {settings.GITHUB_TOKEN}"
-
+async def _fetch_github_profile(
+    client: httpx.AsyncClient,
+    username: str,
+    headers: dict,
+) -> dict[str, Any] | None:
     for attempt in range(3):
         try:
-            resp = await client.get(f"https://api.github.com/users/{username}", headers=headers)
+            resp = await client.get(
+                f"https://api.github.com/users/{username}", headers=headers
+            )
             if resp.status_code == 200:
-                return resp.json()
+                profile_data = resp.json()
+                repos_resp = await client.get(
+                    f"https://api.github.com/users/{username}/repos?sort=pushed&per_page=5",
+                    headers=headers,
+                )
+                real_skills: list[str] = []
+                if repos_resp.status_code == 200:
+                    langs = {
+                        r["language"]
+                        for r in repos_resp.json()
+                        if r.get("language")
+                    }
+                    real_skills = list(langs)
+                profile_data["real_skills"] = real_skills
+                return profile_data
             if resp.status_code in (403, 429):
                 await _exponential_backoff(attempt)
             else:
@@ -157,15 +215,8 @@ async def _fetch_github_page(
     skills: list[str],
     job_title: str,
     page: int,
+    headers: dict,
 ) -> list[dict[str, Any]]:
-    """Fetch one page of GitHub user search results with full profile details."""
-    headers = {
-        "Accept": "application/vnd.github.v3+json",
-        "User-Agent": "HireFlow-Backend",
-    }
-    if settings.GITHUB_TOKEN:
-        headers["Authorization"] = f"Bearer {settings.GITHUB_TOKEN}"
-
     encoded_query = urllib.parse.quote(query)
     search_url = (
         f"https://api.github.com/search/users"
@@ -179,7 +230,10 @@ async def _fetch_github_page(
                 items = resp.json().get("items", [])
                 logger.info(f"GitHub page {page} for '{query}': {len(items)} users")
 
-                profile_tasks = [_fetch_github_profile(client, item["login"]) for item in items[:10]]
+                profile_tasks = [
+                    _fetch_github_profile(client, item["login"], headers)
+                    for item in items[:10]
+                ]
                 profiles = await asyncio.gather(*profile_tasks)
 
                 results = []
@@ -191,7 +245,7 @@ async def _fetch_github_page(
                         "current_title": job_title,
                         "current_company": profile.get("company"),
                         "experience_summary": profile.get("bio") or "",
-                        "skills": skills,
+                        "skills": profile.get("real_skills") or skills,
                         "profile_url": profile.get("html_url"),
                         "source": "GitHub",
                         "location": profile.get("location"),
@@ -201,11 +255,14 @@ async def _fetch_github_page(
                         "email": profile.get("email") or None,
                     })
                 return results
+
             elif resp.status_code in (403, 429):
-                logger.warning(f"GitHub rate limited page {page} (attempt {attempt + 1})")
+                logger.warning(f"GitHub rate limited page {page} (attempt {attempt+1})")
                 await _exponential_backoff(attempt)
             else:
-                logger.error(f"GitHub search page {page} failed: {resp.status_code} — {resp.text[:200]}")
+                logger.error(
+                    f"GitHub search page {page} failed: {resp.status_code} — {resp.text[:200]}"
+                )
                 return []
         except httpx.RequestError as e:
             logger.error(f"GitHub page {page} request error: {e}")
@@ -214,23 +271,31 @@ async def _fetch_github_page(
     return []
 
 
-async def _fetch_github_candidates(job_title: str, criteria: dict[str, Any]) -> list[dict[str, Any]]:
-    """Fetch 2 pages of GitHub candidates concurrently (up to 20 profiles)."""
+async def _fetch_github_candidates(
+    job_title: str, criteria: dict[str, Any]
+) -> list[dict[str, Any]]:
+    """Fetch 2 pages of GitHub candidates (up to 20 profiles)."""
+    headers: dict[str, str] = {
+        "Accept": "application/vnd.github.v3+json",
+        "User-Agent": "HireFlow-Backend",
+    }
+    if settings.GITHUB_TOKEN:
+        headers["Authorization"] = f"Bearer {settings.GITHUB_TOKEN}"
+
     raw_skills = criteria.get("required_skills", [])[:3]
-    # Strip common level prefixes so "Senior Python" → "Python" for better GitHub search
     level_words = {"senior", "junior", "mid", "lead", "staff", "principal", "entry"}
     clean_skills: list[str] = []
     for s in raw_skills:
         words = [w for w in s.lower().split() if w not in level_words]
         if words:
-            clean_skills.append(words[-1])  # take the last meaningful word
+            clean_skills.append(words[-1])
 
     query = " ".join(clean_skills).strip() or job_title
 
-    async with httpx.AsyncClient(timeout=20.0) as client:
-        page1_task = _fetch_github_page(client, query, clean_skills, job_title, page=1)
-        page2_task = _fetch_github_page(client, query, clean_skills, job_title, page=2)
-        pages = await asyncio.gather(page1_task, page2_task, return_exceptions=True)
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        p1 = _fetch_github_page(client, query, clean_skills, job_title, 1, headers)
+        p2 = _fetch_github_page(client, query, clean_skills, job_title, 2, headers)
+        pages = await asyncio.gather(p1, p2, return_exceptions=True)
 
     combined: list[dict[str, Any]] = []
     for page in pages:
@@ -247,8 +312,10 @@ async def _fetch_github_candidates(job_title: str, criteria: dict[str, Any]) -> 
 # Deduplication
 # ---------------------------------------------------------------------------
 
-def _deduplicate_candidates(candidates: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    unique = []
+def _deduplicate_candidates(
+    candidates: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    unique: list[dict[str, Any]] = []
     seen_urls: set[str] = set()
     seen_githubs: set[str] = set()
     seen_keys: set[str] = set()
@@ -262,11 +329,7 @@ def _deduplicate_candidates(candidates: list[dict[str, Any]]) -> list[dict[str, 
         if gh and gh in seen_githubs:
             continue
 
-        name = c.get("name", "")
-        company = c.get("current_company", "")
-        # O(1) deduplication key
-        key = f"{name} {company}".strip().lower()
-
+        key = f"{c.get('name', '')} {c.get('current_company', '')}".strip().lower()
         if len(key) > 3 and key in seen_keys:
             continue
 
@@ -286,12 +349,13 @@ def _deduplicate_candidates(candidates: list[dict[str, Any]]) -> list[dict[str, 
 # Orchestrator
 # ---------------------------------------------------------------------------
 
-async def scrape_candidates(job_title: str, criteria: dict[str, Any] = {}) -> list[dict[str, Any]]:
+async def scrape_candidates(
+    job_title: str, criteria: dict[str, Any] = {}
+) -> list[dict[str, Any]]:
     """
-    Runs LinkedIn (PRIMARY) and GitHub (SECONDARY) scrapers concurrently.
-    Each scraper fetches 2 pages -> up to 40 raw profiles before deduplication.
-    LinkedIn results appear first so they take priority in deduplication.
-    Falls back to a broader GitHub search if <10 results are found.
+    Run LinkedIn (Apify) and GitHub scrapers concurrently.
+    LinkedIn results take priority in deduplication.
+    Falls back to a broader GitHub search if < 10 results found.
     """
     linkedin_task = asyncio.create_task(_fetch_linkedin_candidates(job_title))
     github_task = asyncio.create_task(_fetch_github_candidates(job_title, criteria))
@@ -301,35 +365,45 @@ async def scrape_candidates(job_title: str, criteria: dict[str, Any] = {}) -> li
     )
 
     combined: list[dict[str, Any]] = []
+
     if isinstance(linkedin_results, list):
         combined.extend(linkedin_results)
+        logger.info(f"LinkedIn contributed {len(linkedin_results)} profiles")
     else:
         logger.error(f"LinkedIn scraper failed: {linkedin_results}")
 
     if isinstance(github_results, list):
         combined.extend(github_results)
+        logger.info(f"GitHub contributed {len(github_results)} profiles")
     else:
         logger.error(f"GitHub scraper failed: {github_results}")
 
-    # --- Fallback: if we have <10 results, broaden GitHub search to job_title ---
-    MIN_EXPECTED = 10
-    if len(combined) < MIN_EXPECTED:
+    # Fallback: if still < 10, broaden GitHub search with job title directly
+    if len(combined) < 10:
         logger.warning(
-            f"Only {len(combined)} candidates found. Running broader GitHub fallback search for '{job_title}'..."
+            f"Only {len(combined)} candidates found — running broader GitHub fallback for '{job_title}'"
         )
-        async with httpx.AsyncClient(timeout=20.0) as client:
-            fallback_p1_task = _fetch_github_page(client, job_title, [], job_title, page=1)
-            fallback_p2_task = _fetch_github_page(client, job_title, [], job_title, page=2)
-            fallback_results = await asyncio.gather(fallback_p1_task, fallback_p2_task)
-            
-        for res in fallback_results:
+        gh_headers: dict[str, str] = {
+            "Accept": "application/vnd.github.v3+json",
+            "User-Agent": "HireFlow-Backend",
+        }
+        if settings.GITHUB_TOKEN:
+            gh_headers["Authorization"] = f"Bearer {settings.GITHUB_TOKEN}"
+
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            fb1 = _fetch_github_page(client, job_title, [], job_title, 1, gh_headers)
+            fb2 = _fetch_github_page(client, job_title, [], job_title, 2, gh_headers)
+            fallback = await asyncio.gather(fb1, fb2, return_exceptions=True)
+
+        for res in fallback:
             if isinstance(res, list):
                 combined.extend(res)
-        logger.info("Fallback added more profiles")
 
     if not combined:
         logger.warning("All scrapers returned empty — no candidates found.")
 
     deduped = _deduplicate_candidates(combined)
-    logger.info(f"Scrape complete: {len(combined)} raw -> {len(deduped)} after deduplication")
+    logger.info(
+        f"Scrape complete: {len(combined)} raw → {len(deduped)} after deduplication"
+    )
     return deduped
