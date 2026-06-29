@@ -111,7 +111,8 @@ def score_candidates_batch(
     """
     results: list[dict[str, Any]] = [{} for _ in range(len(candidates_data))]
     
-    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
+    # Reduce workers to 1 to pace out Groq API requests and avoid the 6000 TPM limit
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
         futures = {
             pool.submit(score_candidate, cand, job_criteria): idx 
             for idx, cand in enumerate(candidates_data)
