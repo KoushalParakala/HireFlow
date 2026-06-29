@@ -1,14 +1,17 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   body {
-    background-color: #f9f9fb;
-    color: #1a1c1d;
+    background-color: #f9f9ff;
+    color: #151c27;
     font-family: 'Inter', sans-serif;
     -webkit-font-smoothing: antialiased;
-    min-height: max(884px, 100dvh);
+    min-height: 100dvh;
   }
 }
 
@@ -16,66 +19,112 @@
   .material-symbols-outlined {
     font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
     vertical-align: middle;
-  }
-  
-  .hairline-divider {
-    height: 1px;
-    background-color: #e2e2e4;
-    width: 100%;
+    font-family: 'Material Symbols Outlined';
   }
 
-  .ambient-card {
-    transition: all 0.3s ease;
-  }
-  
-  .ambient-card:hover {
-    background-color: #f9f9fb;
+  /* Ambient shadow — replaces box-shadow utility */
+  .ambient-shadow {
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
   }
 
+  /* Glass navigation panel */
+  .glass-nav {
+    background: rgba(249, 249, 255, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  /* Glass panel utility */
+  .glass-panel {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  /* Focus shadow for inputs */
+  .input-focus-shadow:focus-within {
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+  }
+
+  /* Atmospheric shadow (heavier) */
   .atmospheric-shadow {
     box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.04);
   }
 
-  .hairline-border {
-    border-bottom: 0.5px solid #E5E5E5;
-  }
-
+  /* Score gradient — orange to deep orange */
   .score-gradient {
-    background: linear-gradient(90deg, #0058bc 0%, #0070eb 100%);
+    background: linear-gradient(90deg, #fc8a40 0%, #e05a00 100%);
   }
 
-  .matrix-cell {
-    padding: 24px 32px;
+  /* Hairline divider */
+  .hairline-divider {
+    height: 1px;
+    background-color: #c6c6ca;
+    width: 100%;
   }
 
-  .pulse-effect {
-    animation: pulse-ring 2s infinite ease-in-out;
+  /* Hairline border */
+  .hairline-border {
+    border-bottom: 0.5px solid #dce2f3;
   }
 
-  .atmospheric-blur {
-    backdrop-filter: blur(20px);
-    background: rgba(249, 249, 251, 0.7);
-  }
-
+  /* Soft card */
   .soft-card {
     background: #ffffff;
     transition: transform 0.2s ease;
   }
-  
-  .glass-nav {
-    background: rgba(249, 249, 251, 0.8);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+
+  /* Candidate card hover */
+  .ambient-card {
+    transition: all 0.25s ease;
+  }
+  .ambient-card:hover {
+    background-color: #f0f3ff;
+  }
+
+  /* Pulse effect */
+  .pulse-effect {
+    animation: pulse-ring 2.5s infinite ease-in-out;
+  }
+
+  /* Skill pill base */
+  .skill-pill {
+    @apply px-4 py-1.5 rounded-full text-label-sm font-label-sm bg-surface-container-low text-primary;
+  }
+
+  /* Nav active item */
+  .nav-active {
+    @apply flex items-center gap-4 bg-surface-container-high text-primary rounded-xl px-4 py-3 font-label-bold text-label-bold transition-all;
+  }
+
+  /* Nav inactive item */
+  .nav-item {
+    @apply flex items-center gap-4 text-on-surface-variant px-4 py-3 font-label-bold text-label-bold hover:bg-surface-container-low rounded-xl transition-all;
+  }
+
+  /* LinkedIn button */
+  .linkedin-btn {
+    @apply inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#0077B5] text-white text-label-sm font-label-sm hover:bg-[#005f8f] transition-colors;
   }
 }
 
 @keyframes pulse-ring {
-  0% { transform: scale(0.95); opacity: 0.8; }
-  50% { transform: scale(1.05); opacity: 0.4; }
-  100% { transform: scale(0.95); opacity: 0.8; }
+  0%   { transform: scale(0.95); opacity: 0.7; }
+  50%  { transform: scale(1.05); opacity: 0.3; }
+  100% { transform: scale(0.95); opacity: 0.7; }
 }
 
-/* Custom scrollbar for minimalist feel */
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.3s ease forwards;
+}
+
+/* Custom scrollbar */
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #E5E5E5; border-radius: 10px; }
+::-webkit-scrollbar-thumb { background: #dce2f3; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #c6c6ca; }

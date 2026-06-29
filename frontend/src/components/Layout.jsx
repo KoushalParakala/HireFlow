@@ -1,59 +1,118 @@
-import { Link } from 'react-router-dom';
+import { useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 
 export default function Layout({ children }) {
+  const location = useLocation();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const isActive = (path) => location.pathname === path;
+
   return (
-    <div className="bg-background text-on-surface min-h-screen flex flex-col">
-      {/* TopNavBar */}
-      <nav className="sticky top-0 z-50 glass-nav border-b border-outline-variant/30">
-        <div className="flex justify-between items-center w-full px-8 max-w-[1440px] mx-auto h-16">
-          <div className="flex items-center gap-12">
-            <Link to="/" className="font-headline-md text-[24px] font-bold text-primary">HireFlow</Link>
-            <div className="hidden md:flex gap-8">
-              <Link to="/" className="text-secondary hover:text-primary transition-colors font-label-md text-[14px]">
-                Jobs
-              </Link>
-              <Link to="/" onClick={() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' })} className="text-on-surface-variant hover:text-primary transition-colors font-label-md text-[14px]">
-                Post Job
-              </Link>
-              <a className="text-on-surface-variant hover:text-primary transition-colors font-label-md text-[14px]" href="#">
-                Analytics
-              </a>
-              <a className="text-on-surface-variant hover:text-primary transition-colors font-label-md text-[14px]" href="#">
-                Settings
-              </a>
-            </div>
-          </div>
-          <div className="flex items-center gap-4">
-            <button className="p-2 text-on-surface-variant hover:bg-surface-container-low rounded-full transition-colors">
-              <span className="material-symbols-outlined">notifications</span>
-            </button>
-            <div className="h-8 w-8 rounded-full bg-primary-fixed flex items-center justify-center overflow-hidden">
-              <span className="material-symbols-outlined text-primary">account_circle</span>
-            </div>
-          </div>
+    <div className="bg-background text-on-surface min-h-screen flex flex-col md:flex-row">
+
+      {/* ── Desktop Sidebar ── */}
+      <nav className="hidden md:flex flex-col p-6 z-40 bg-surface-container-lowest shadow-[4px_0_20px_rgba(0,0,0,0.04)] fixed left-0 top-0 h-full w-64">
+        {/* Logo */}
+        <div className="mb-10">
+          <Link to="/">
+            <h1 className="font-headline-md text-headline-md font-black text-primary tracking-tight">
+              HireFlow
+            </h1>
+          </Link>
+          <p className="font-label-sm text-label-sm text-on-surface-variant mt-1">
+            Recruitment Suite
+          </p>
+        </div>
+
+        {/* Nav Links */}
+        <div className="flex-1 space-y-1">
+          <Link to="/" className={isActive('/') ? 'nav-active' : 'nav-item'}>
+            <span className="material-symbols-outlined" style={{ fontVariationSettings: isActive('/') ? "'FILL' 1" : "'FILL' 0" }}>
+              work
+            </span>
+            <span>Pipeline</span>
+          </Link>
+          <a href="#" className="nav-item">
+            <span className="material-symbols-outlined">analytics</span>
+            <span>Analytics</span>
+          </a>
+          <a href="#" className="nav-item">
+            <span className="material-symbols-outlined">settings</span>
+            <span>Settings</span>
+          </a>
+        </div>
+
+        {/* Create Job CTA */}
+        <div className="mt-auto pt-6 border-t border-outline-variant">
+          <Link
+            to="/"
+            onClick={() => setTimeout(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }), 100)}
+            className="w-full py-3 bg-secondary-container text-primary rounded-xl font-label-bold text-label-bold hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
+          >
+            <span className="material-symbols-outlined text-[18px]">add</span>
+            Create Job
+          </Link>
         </div>
       </nav>
 
-      {/* Main Content */}
-      <main className="flex-grow">
-        {children}
-      </main>
-
-      {/* Footer */}
-      <footer className="py-stack-lg border-t border-outline-variant/30 bg-surface-container-low mt-stack-xl">
-        <div className="max-w-7xl mx-auto px-4 md:px-margin-page flex flex-col md:flex-row justify-between items-start md:items-center gap-8">
-          <div>
-            <p className="font-headline-md text-primary font-bold tracking-tighter mb-2">HireFlow</p>
-            <p className="text-on-surface-variant text-sm">© 2026 HireFlow. All rights reserved.</p>
+      {/* ── Mobile Top Nav ── */}
+      <header className="md:hidden bg-surface/90 backdrop-blur-md sticky top-0 z-50 shadow-sm border-b border-outline-variant/30">
+        <div className="flex justify-between items-center w-full px-margin-mobile py-4">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="p-1.5 text-on-surface-variant hover:text-primary transition-colors rounded-lg hover:bg-surface-container-low"
+              aria-label="Toggle menu"
+            >
+              <span className="material-symbols-outlined">{mobileMenuOpen ? 'close' : 'menu'}</span>
+            </button>
+            <Link to="/" className="font-headline-md text-[22px] font-black tracking-tight text-primary">
+              HireFlow
+            </Link>
           </div>
-          <div className="flex gap-8 text-on-surface-variant text-sm font-medium">
-            <a className="hover:text-primary transition-colors" href="#">Privacy</a>
-            <a className="hover:text-primary transition-colors" href="#">Terms</a>
-            <a className="hover:text-primary transition-colors" href="#">Support</a>
-            <a className="hover:text-primary transition-colors" href="#">API Documentation</a>
+          <div className="flex items-center gap-2">
+            <button className="p-1.5 text-on-surface-variant hover:text-primary transition-colors rounded-lg hover:bg-surface-container-low">
+              <span className="material-symbols-outlined">notifications</span>
+            </button>
+            <div className="w-8 h-8 rounded-full bg-primary-fixed flex items-center justify-center">
+              <span className="material-symbols-outlined text-on-surface-variant text-[20px]">person</span>
+            </div>
           </div>
         </div>
-      </footer>
+
+        {/* Mobile Drawer */}
+        {mobileMenuOpen && (
+          <div className="border-t border-outline-variant/30 bg-surface-container-lowest px-4 py-3 space-y-1 animate-fade-in">
+            <Link to="/" onClick={() => setMobileMenuOpen(false)} className={isActive('/') ? 'nav-active' : 'nav-item'}>
+              <span className="material-symbols-outlined" style={{ fontVariationSettings: isActive('/') ? "'FILL' 1" : "'FILL' 0" }}>work</span>
+              Pipeline
+            </Link>
+            <a href="#" className="nav-item">
+              <span className="material-symbols-outlined">analytics</span>
+              Analytics
+            </a>
+            <a href="#" className="nav-item">
+              <span className="material-symbols-outlined">settings</span>
+              Settings
+            </a>
+            <div className="pt-2">
+              <Link
+                to="/"
+                onClick={() => { setMobileMenuOpen(false); setTimeout(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }), 100); }}
+                className="w-full py-3 bg-secondary-container text-primary rounded-xl font-label-bold text-label-bold hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
+              >
+                <span className="material-symbols-outlined text-[18px]">add</span>
+                Create Job
+              </Link>
+            </div>
+          </div>
+        )}
+      </header>
+
+      {/* ── Main Content ── */}
+      <main className="flex-1 md:ml-64 min-h-screen">
+        {children}
+      </main>
     </div>
   );
 }
