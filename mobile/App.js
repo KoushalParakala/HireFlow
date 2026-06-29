@@ -35,7 +35,7 @@ function WelcomeScreen({ onBegin }) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar style="light" />
+      <StatusBar style="dark" />
       <View style={styles.heroCard}>
         <Text style={styles.logoText}>HireFlow</Text>
         <Text style={styles.heroTitle}>Async Video Interview</Text>
@@ -117,7 +117,7 @@ function InterviewScreen({ token, onBack }) {
   if (state.loading) {
     return (
       <SafeAreaView style={[styles.container, styles.center]}>
-        <ActivityIndicator size="large" color={PURPLE} />
+        <ActivityIndicator size="large" color={PRIMARY} />
         <Text style={styles.loadingText}>Loading your interview…</Text>
       </SafeAreaView>
     );
@@ -362,7 +362,7 @@ function RecordingScreen({ token, question, questionIndex, totalQuestions, onNex
         )}
         {phase === 'upload' && (
           <View style={[styles.center, {flex: 1}]}>
-            <ActivityIndicator size="large" color={PURPLE} />
+            <ActivityIndicator size="large" color={PRIMARY} />
             <Text style={{color: TEXT, marginTop: 20}}>Uploading answer... {uploadProgress}%</Text>
             <Text style={{color: MUTED, marginTop: 10, textAlign: 'center'}}>
               If you lose connection, the upload will resume where it left off.
@@ -397,7 +397,7 @@ function CompletionScreen({ token, responses, onBack }) {
   if (submitting) {
     return (
       <SafeAreaView style={[styles.container, styles.center]}>
-        <ActivityIndicator size="large" color={PURPLE} />
+        <ActivityIndicator size="large" color={PRIMARY} />
         <Text style={{color: TEXT, marginTop: 20}}>Finalizing interview...</Text>
       </SafeAreaView>
     );
@@ -468,24 +468,25 @@ export default function App() {
   }} />;
 }
 
-const PURPLE = '#6c47ff';
-const DARK = '#0f0e1a';
-const CARD = '#1a1830';
-const TEXT = '#e8e8f0';
-const MUTED = '#9999bb';
+const PRIMARY = '#fc8a40';
+const LIGHT = '#f9f9ff';
+const CARD = '#ffffff';
+const TEXT = '#151c27';
+const MUTED = '#45474a';
+const DIVIDER = '#dce2f3';
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: DARK },
+  container: { flex: 1, backgroundColor: LIGHT },
   center: { alignItems: 'center', justifyContent: 'center', padding: 24 },
-  heroCard: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
-  logoText: { fontSize: 14, fontWeight: '700', color: PURPLE, letterSpacing: 4, marginBottom: 16, textTransform: 'uppercase' },
-  heroTitle: { fontSize: 28, fontWeight: '800', color: TEXT, textAlign: 'center', marginBottom: 16 },
-  heroSubtitle: { fontSize: 15, color: MUTED, textAlign: 'center', lineHeight: 24, marginBottom: 40 },
-  input: { backgroundColor: CARD, color: TEXT, width: '100%', padding: 16, borderRadius: 12, marginBottom: 16, borderWidth: 1, borderColor: '#2a2840' },
-  primaryBtn: { backgroundColor: PURPLE, paddingVertical: 16, paddingHorizontal: 48, borderRadius: 12, width: '100%', alignItems: 'center' },
-  primaryBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
-  header: { backgroundColor: CARD, padding: 24, paddingTop: 16, borderBottomWidth: 1, borderBottomColor: '#2a2840' },
-  headerTag: { fontSize: 11, fontWeight: '700', color: PURPLE, letterSpacing: 3, marginBottom: 6 },
+  heroCard: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, backgroundColor: CARD, margin: 16, borderRadius: 24, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.04, shadowRadius: 20, elevation: 2, borderWidth: 1, borderColor: DIVIDER },
+  logoText: { fontSize: 24, fontWeight: '800', color: '#000', letterSpacing: -0.5, marginBottom: 16 },
+  heroTitle: { fontSize: 28, fontWeight: '800', color: TEXT, textAlign: 'center', marginBottom: 16, letterSpacing: -0.5 },
+  heroSubtitle: { fontSize: 16, color: MUTED, textAlign: 'center', lineHeight: 24, marginBottom: 40 },
+  input: { backgroundColor: '#f9f9ff', color: TEXT, width: '100%', padding: 16, borderRadius: 16, marginBottom: 16, borderWidth: 1, borderColor: DIVIDER, fontSize: 16 },
+  primaryBtn: { backgroundColor: PRIMARY, paddingVertical: 16, paddingHorizontal: 48, borderRadius: 16, width: '100%', alignItems: 'center', shadowColor: PRIMARY, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 20, elevation: 4 },
+  primaryBtnText: { color: '#ffffff', fontSize: 16, fontWeight: '700' },
+  header: { backgroundColor: CARD, padding: 24, paddingTop: 16, borderBottomWidth: 1, borderBottomColor: DIVIDER },
+  headerTag: { fontSize: 13, fontWeight: '700', color: PRIMARY, letterSpacing: 1, marginBottom: 6 },
   headerJob: { fontSize: 20, fontWeight: '800', color: TEXT, marginBottom: 4 },
   headerName: { fontSize: 14, color: MUTED },
   sectionTitle: { fontSize: 13, fontWeight: '700', color: MUTED, letterSpacing: 1, marginBottom: 8 },
@@ -493,7 +494,7 @@ const styles = StyleSheet.create({
   errorEmoji: { fontSize: 48, marginBottom: 16 },
   errorTitle: { fontSize: 20, fontWeight: '700', color: TEXT, marginBottom: 8 },
   errorMsg: { color: '#ff6b6b', fontSize: 13, textAlign: 'center', marginBottom: 8 },
-  overlayBox: { backgroundColor: 'rgba(0,0,0,0.6)', padding: 20, borderRadius: 16, alignItems: 'center' },
-  overlayTitle: { color: '#fff', fontSize: 16, fontWeight: '700', marginBottom: 10 },
-  overlayTime: { color: '#fff', fontSize: 32, fontWeight: '800', marginBottom: 20 },
+  overlayBox: { backgroundColor: 'rgba(255,255,255,0.9)', padding: 20, borderRadius: 16, alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 10, elevation: 5 },
+  overlayTitle: { color: TEXT, fontSize: 16, fontWeight: '700', marginBottom: 10 },
+  overlayTime: { color: TEXT, fontSize: 32, fontWeight: '800', marginBottom: 20 },
 });
