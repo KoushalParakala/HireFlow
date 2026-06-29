@@ -11,6 +11,3 @@ python-multipart
 aiofiles
 uvicorn[standard]
 faster-whisper
---extra-index-url https://download.pytorch.org/whl/cpu
-torch==2.12.1+cpu
-sentence-transformers==3.4.1
