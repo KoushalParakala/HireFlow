@@ -99,13 +99,19 @@ def send_invite_email(
 
     # --- Path 1: Resend HTTP API (preferred — no SMTP port issues) ---
     if settings.RESEND_API_KEY:
+        # Resend Sandbox restricts sending to your verified email address
+        actual_to_email = to_email
+        if "onboarding@resend.dev" in settings.SMTP_FROM_EMAIL:
+            actual_to_email = "koushal.sub@gmail.com"
+            logger.info(f"Overriding destination {to_email} -> {actual_to_email} due to Resend sandbox restrictions.")
+
         try:
             resp = httpx.post(
                 "https://api.resend.com/emails",
                 headers={"Authorization": f"Bearer {settings.RESEND_API_KEY}"},
                 json={
                     "from": settings.SMTP_FROM_EMAIL,
-                    "to": [to_email],
+                    "to": [actual_to_email],
                     "subject": subject,
                     "html": html_body,
                 },
