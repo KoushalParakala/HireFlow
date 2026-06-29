@@ -282,7 +282,7 @@ export default function CandidateProfile() {
                 {candidate.red_flags.map((flag, i) => (
                   <li key={i} className="flex items-start gap-3">
                     <div className="w-1.5 h-1.5 rounded-full bg-error mt-2 shrink-0 opacity-60" />
-                    <span>{flag}</span>
+                    <span>{typeof flag === 'string' ? flag : flag.description || flag.flag_type || JSON.stringify(flag)}</span>
                   </li>
                 ))}
               </ul>
@@ -314,7 +314,7 @@ export default function CandidateProfile() {
                     {['clarity', 'relevance', 'specificity', 'depth'].map(dim => (
                       <div key={dim} className="bg-surface-container-lowest p-4 rounded-xl border border-outline-variant/30">
                         <p className="font-label-sm text-label-sm text-on-surface-variant mb-1 uppercase tracking-wider capitalize">{dim}</p>
-                        <p className="font-bold text-primary text-[22px]">{q.dimensions?.[dim] || 0}<span className="text-on-surface-variant text-sm">/10</span></p>
+                        <p className="font-bold text-primary text-[22px]">{q.scores?.[dim] ?? q.dimensions?.[dim] ?? 0}<span className="text-on-surface-variant text-sm">/100</span></p>
                       </div>
                     ))}
                   </div>
