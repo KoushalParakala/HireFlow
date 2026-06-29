@@ -109,7 +109,7 @@ def score_candidates_batch(
     """
     Scores multiple candidates concurrently using Groq API.
     """
-    results: list[dict[str, Any]] = [None] * len(candidates_data)
+    results: list[dict[str, Any]] = [{} for _ in range(len(candidates_data))]
     
     with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
         futures = {
