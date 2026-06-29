@@ -1,21 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 
-// Derive LinkedIn photo URL from profile URL (best-effort)
-const getLinkedInPhoto = (profileUrl, fallbackId) => {
-  if (profileUrl) {
-    try {
-      const url = new URL(profileUrl);
-      const parts = url.pathname.split('/').filter(Boolean);
-      // e.g. /in/john-doe → slug is "john-doe"
-      const inIdx = parts.indexOf('in');
-      if (inIdx !== -1 && parts[inIdx + 1]) {
-        return `https://unavatar.io/linkedin/${parts[inIdx + 1]}`;
-      }
-    } catch (_) { /* ignore */ }
-  }
-  return `https://i.pravatar.cc/150?u=${fallbackId}`;
-};
+// Removed external avatar fetching
 
 const STATUS_STYLES = {
   shortlisted: 'bg-surface-container-low text-primary',
@@ -247,7 +233,7 @@ export default function CandidatePipeline() {
         {/* Candidate Cards */}
         {sortedCandidates.map((candidate, idx) => {
           const isTop = idx === 0 && candidate.semantic_score >= 80;
-          const photoUrl = getLinkedInPhoto(candidate.profile_url, candidate.id);
+          // Removed external avatar fetching
 
           return (
             <article
@@ -263,12 +249,9 @@ export default function CandidatePipeline() {
                   {/* Avatar */}
                   <div className="relative shrink-0">
                     <div className="w-16 h-16 rounded-full overflow-hidden bg-surface-container ring-2 ring-outline-variant/30">
-                      <img
-                        src={photoUrl}
-                        alt={candidate.name || 'Candidate'}
-                        className="w-full h-full object-cover"
-                        onError={e => { e.target.src = `https://i.pravatar.cc/150?u=${candidate.id}`; }}
-                      />
+                      <div className="w-full h-full flex items-center justify-center font-bold text-2xl text-on-surface bg-surface-variant">
+                        {candidate.name ? candidate.name.charAt(0).toUpperCase() : 'C'}
+                      </div>
                     </div>
                     {/* LinkedIn badge */}
                     {candidate.profile_url && (

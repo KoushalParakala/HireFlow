@@ -66,7 +66,7 @@ export default function CandidateComparison() {
     );
   };
 
-  const getAvatar = (id) => `https://i.pravatar.cc/150?u=${id}`;
+  // Removed getAvatar
   
   // Collect all unique questions across candidates to render the rows
   const allQuestions = [];
@@ -135,7 +135,9 @@ export default function CandidateComparison() {
             {comparisonData.map(({ candidate }) => (
               <div key={candidate.id} className="w-80 shrink-0 bg-surface border border-outline-variant/30 rounded-xl p-6 flex flex-col items-center text-center shadow-sm">
                 <div className="w-20 h-20 rounded-full overflow-hidden mb-4 border border-outline-variant">
-                  <img className="w-full h-full object-cover" src={getAvatar(candidate.id)} alt={candidate.name} />
+                  <div className="w-full h-full flex items-center justify-center font-bold text-3xl text-on-surface bg-surface-variant">
+                    {candidate.name ? candidate.name.charAt(0).toUpperCase() : 'C'}
+                  </div>
                 </div>
                 <h3 className="font-headline-md text-headline-md font-bold text-on-surface">{candidate.name}</h3>
                 <p className="text-on-surface-variant text-body-md line-clamp-1">{candidate.current_title}</p>

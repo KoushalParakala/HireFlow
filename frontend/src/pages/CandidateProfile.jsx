@@ -1,19 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 
-const getLinkedInPhoto = (profileUrl, fallbackId) => {
-  if (profileUrl) {
-    try {
-      const url = new URL(profileUrl);
-      const parts = url.pathname.split('/').filter(Boolean);
-      const inIdx = parts.indexOf('in');
-      if (inIdx !== -1 && parts[inIdx + 1]) {
-        return `https://unavatar.io/linkedin/${parts[inIdx + 1]}`;
-      }
-    } catch (_) { /* ignore */ }
-  }
-  return `https://i.pravatar.cc/300?u=${fallbackId}`;
-};
+// Removed external avatar fetching
 
 export default function CandidateProfile() {
   const { id } = useParams();
@@ -50,7 +38,7 @@ export default function CandidateProfile() {
     </div>
   );
 
-  const photoUrl = getLinkedInPhoto(candidate.profile_url, candidate.id);
+  // Removed external avatar fetching
   const matchScore = candidate.semantic_score || 0;
   const circumference = 2 * Math.PI * 45; // r=45
   const dashOffset = circumference - (matchScore / 100) * circumference;
@@ -121,12 +109,9 @@ export default function CandidateProfile() {
           {/* Photo */}
           <div className="relative">
             <div className="w-24 h-24 rounded-full overflow-hidden ring-4 ring-outline-variant/30 bg-surface-container">
-              <img
-                src={photoUrl}
-                alt={candidate.name || 'Candidate'}
-                className="w-full h-full object-cover"
-                onError={e => { e.target.src = `https://i.pravatar.cc/300?u=${candidate.id}`; }}
-              />
+              <div className="w-full h-full flex items-center justify-center font-bold text-4xl text-on-surface bg-surface-variant">
+                {candidate.name ? candidate.name.charAt(0).toUpperCase() : 'C'}
+              </div>
             </div>
             {/* LinkedIn badge */}
             {candidate.profile_url && (
