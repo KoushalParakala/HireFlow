@@ -14,6 +14,7 @@ import {
 import { StatusBar } from 'expo-status-bar';
 import { CameraView, useCameraPermissions, useMicrophonePermissions } from 'expo-camera';
 import * as FileSystem from 'expo-file-system/legacy';
+import * as ExpoLinking from 'expo-linking';
 
 // ---------------------------------------------------------------------------
 // Config
@@ -432,15 +433,28 @@ export default function App() {
   function handleUrl(url) {
     if (!url) return;
     try {
-      const parsed = new URL(url);
-      if (parsed.hostname === 'interview' || parsed.pathname.startsWith('/interview/')) {
-        const t = parsed.pathname.replace(/^\/interview\//, '').replace(/^\//, '');
+      const parsed = ExpoLinking.parse(url);
+      // parsed.hostname === 'interview'
+      // parsed.path === 'token'
+      if (parsed.hostname === 'interview') {
+        let t = parsed.path;
+        if (t) {
+          // Remove any trailing slashes just in case
+          t = t.replace(/\/$/, '');
+          setToken(t);
+          setScreen('interview');
+        }
+      } else if (parsed.path && parsed.path.includes('interview/')) {
+        // Fallback if parsed weirdly
+        const t = parsed.path.split('interview/')[1];
         if (t) {
           setToken(t);
           setScreen('interview');
         }
       }
-    } catch {}
+    } catch (e) {
+      console.warn("Error parsing deep link:", e);
+    }
   }
 
   useEffect(() => {
