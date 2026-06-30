@@ -2,6 +2,9 @@
 
 AI-Powered Talent Screening and Interview Intelligence Platform.
 
+Frontend (web app): https://hireflow-web-j73x.onrender.com
+Backend API: https://hireflow-backend-xhf9.onrender.com
+
 ## Patch Notes (latest pass)
 
 - **Fixed the broken chunked video upload.** The mobile app was slicing the
@@ -88,4 +91,4 @@ We run transcription CPU-bound on the free Railway tier using `faster-whisper`.
 
 ## Android APK
 
-[Download the APK here] <Replace with EAS build link>
+[Download the APK here] https://drive.google.com/file/d/1nys7U-qOZ5GlJpi05E01S4Gf6qQQxYE1/view?usp=drive_link
