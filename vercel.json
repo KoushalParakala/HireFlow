@@ -3,10 +3,6 @@
     {
       "path": "/api/cron/keepalive",
       "schedule": "0 8 * * *"
-    },
-    {
-      "path": "/api/worker/tick",
-      "schedule": "* * * * *"
     }
   ]
 }

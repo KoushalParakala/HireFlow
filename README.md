@@ -2,7 +2,35 @@
 
 Recruiter tool for one role: **job → people → interview paper → invite → record → scorecard → compare**. Candidates never log in. They open a private link and answer in the browser.
 
-This is the v2 rewrite (Next.js + Supabase). The old Python app in `HireFlow-main` is reference only.
+## Deploy (Vercel)
+
+Production is this Next.js app on Vercel, talking to the existing Supabase project. After GitHub `main` is imported, every push deploys.
+
+1. Open [vercel.com/new](https://vercel.com/new) and import **KoushalParakala/HireFlow** (Framework Preset: Next.js, Root Directory: `.`).
+2. Set **Environment Variables** for Production. Copy names from `.env.example`. These must be set:
+
+   | Name | Notes |
+   |---|---|
+   | `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
+   | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Publishable / anon key |
+   | `SUPABASE_SERVICE_ROLE_KEY` | Secret / service role. Never `NEXT_PUBLIC_` |
+   | `NEXT_PUBLIC_APP_URL` | The `https://….vercel.app` URL (or custom domain) |
+   | `WORKER_SECRET` | Random string (`openssl rand -hex 32`) |
+   | `PROVIDER_MODE` | `real` |
+   | `GROQ_API_KEY` | Scoring + transcription |
+   | `GITHUB_TOKEN` | GitHub sourcing |
+   | `APIFY_TOKEN` | LinkedIn sourcing |
+   | `GMAIL_USER` / `GMAIL_APP_PASSWORD` | Invite email (copy-link still works without these) |
+
+3. Deploy. After the first URL exists, set `NEXT_PUBLIC_APP_URL` to that URL and redeploy.
+4. In the Supabase SQL editor, point `pg_cron` at the live worker (once a minute). This is the scoring queue:
+
+```sql
+select vault.create_secret('https://YOUR-APP.vercel.app/api/worker/tick', 'worker_url');
+select vault.create_secret('YOUR_WORKER_SECRET', 'worker_secret');
+```
+
+Vercel Hobby only allows a daily cron. `vercel.json` hits `/api/cron/keepalive` at 08:00 UTC so the free project does not sleep. Interview scoring still runs from Supabase `pg_cron` plus in-request worker kicks.
 
 ## Free stack
 
@@ -27,7 +55,6 @@ This is the v2 rewrite (Next.js + Supabase). The old Python app in `HireFlow-mai
 5. Run:
 
 ```bash
-cd hireflow
 pnpm install
 pnpm dev
 ```
@@ -43,19 +70,6 @@ pnpm smoke
 ```
 
 Creates a throwaway job, queues two answers, runs the worker in fake mode, asserts a scorecard, then deletes the job.
-
-## After deploy
-
-1. Set the same env vars on Vercel, including `APIFY_TOKEN`, with `NEXT_PUBLIC_APP_URL` = your `*.vercel.app` URL
-2. `WORKER_SECRET` must match
-3. In the Supabase SQL editor, store vault secrets so `pg_cron` can hit the worker every minute:
-
-```sql
-select vault.create_secret('https://YOUR-APP.vercel.app/api/worker/tick', 'worker_url');
-select vault.create_secret('YOUR_WORKER_SECRET', 'worker_secret');
-```
-
-The daily Vercel cron at `/api/cron/keepalive` stops the free project from pausing after 7 idle days (which would also stop `pg_cron`).
 
 ## Product loop
 
