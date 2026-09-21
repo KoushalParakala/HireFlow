@@ -1,0 +1,50 @@
+@import "tailwindcss";
+
+:root {
+  --paper: #f3eee4;
+  --paper-2: #e7e0d2;
+  --ink: #1c1712;
+  --muted: #6d6458;
+  --line: #d4cbb8;
+  --accent: #0f5e52;
+  --accent-2: #c45c26;
+  --danger: #9b2c2c;
+  --ok: #2f6f4e;
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-paper-2: var(--paper-2);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-accent: var(--accent);
+  --color-accent-2: var(--accent-2);
+  --color-danger: var(--danger);
+  --color-ok: var(--ok);
+  --font-sans: var(--font-sans);
+  --font-display: var(--font-display);
+}
+
+html,
+body {
+  background: var(--paper);
+  color: var(--ink);
+}
+
+body {
+  font-family: var(--font-sans), "Segoe UI", sans-serif;
+}
+
+h1,
+h2,
+h3,
+.display {
+  font-family: var(--font-display), Georgia, serif;
+  letter-spacing: -0.03em;
+}
+
+.hairline {
+  background: linear-gradient(90deg, transparent, var(--line), transparent);
+  height: 1px;
+}
